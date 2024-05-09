@@ -1,52 +1,57 @@
-import json
-import string
-import uuid
-import io
-import contextlib
+import traceback
 from flask import request
 from flask import Blueprint
-from datetime import datetime
 from utils.model_utils import *
 from objects.RResponse import RResponse
 from objects.RServer import RServer
+from objects.RModelWrapper import RModelWrapper
 
 model_api = Blueprint("model_api", __name__)
 
+
 @model_api.route("/model/current", methods=["GET"])
-def GetCurrModel():
-    """ Get the model that is currently active """
-    """ return data
-    {
-        id: string,
-        name: string,
-        details: string,
-    }
+def get_curr_model():
+    model = RServer.get_model_wrapper().get_current_model_metadata()
+    if not model:
+        RResponse.abort(400, f"No current model is selected")
+
+    return RResponse.ok(model.as_dict())
+
+
+@model_api.route("/model/current/<int:model_id>", methods=["POST"])
+def set_curr_model(model_id: int):
+    """return 200 on success"""
+    try:
+        RServer.get_model_wrapper().set_current_model(model_id)
+        return RResponse.ok("Success")
+    except Exception as e:
+        traceback.print_exc()
+        RResponse.abort(500, f"Failed to switch to model {model_id}. Error: {str(e)}")
+
+
+@model_api.route("/model/<int:model_id>", methods=["DELETE"])
+def delete_model(model_id: int):
     """
-    pass
-
-
-@model_api.route("/model/current/<model_id>", methods=["POST"])
-def SetCurrModel(model_id: string):
-    """ return 200 on success """
-    pass
-
-
-@model_api.route("/model/<id>", methods=["DELETE"])
-def DeleteModel():
-    """ return data
-    {
-        id: string,
-        name: string,
-        details: string,
-    }
+    return model meta data
     """
-    pass
+    try:
+        model = RServer.get_model_wrapper().delete_model_by_id(model_id)
+    except ValueError as e:
+        RResponse.abort(400, f"Failed to delete model {model_id}. Error: {str(e)}")
+    except Exception as e:
+        traceback.print_exc()
+        RResponse.abort(500, f"Failed to delete model {model_id}. Error: {str(e)}")
+
+    if not model:
+        RResponse.abort(400, f"Model {model_id} does not exist.")
+
+    return RResponse.ok(model.as_dict())
 
 
 @model_api.route("/model", methods=["POST"])
-def UploadModel():
+def upload_model():
     """
-    Upload a new model to the server
+    Should also accept (optionally) a model weight file as argument
     ---
     tags:
       - model
@@ -83,6 +88,12 @@ def UploadModel():
             type: "string"
             description: "A nickname for the model."
             required: true
+          predefined:
+            type: "string"
+            description: |
+                Indicates if a predefined model is being used.
+                "1" represents predefined, "0" otherwise.
+            required: true
           description:
             type: "string"
             description: "A description of the model (optional)."
@@ -94,11 +105,8 @@ def UploadModel():
           pretrained:
             type: "string"
             description: |
-              Indicates if a predefined model is being used.
-              "1" represents pretrained, "0" otherwise (required only if users choose to use a predefined model).
-          num_classes:
-            type: "integer"
-            description: "The number of classes (required only if users choose to use a predefined model)."
+              Indicates whether the model is pretrained.
+              Should only be set to "1" if the model is predefined and pretrained.
 
     responses:
       200:
@@ -126,147 +134,147 @@ def UploadModel():
               example: "Success"
 
     """
-    # Get the model's metadata
-    metadata = json.loads(request.form.get('metadata'))
-
-    # Check if the folder for saving models exists, if not, create it
-    models_dir = os.path.join(RServer.get_server().base_dir, 'generated', 'models')
-    if not os.path.exists(models_dir):
-        os.makedirs(models_dir)
-
-    print("Requested to upload a new model")
-
-    # Generate a uuid for the model saving
-    saving_id = str(uuid.uuid4())
-
-    code_path = os.path.join(RServer.get_server().base_dir, 'generated', 'models', f'{saving_id}.py')
-
-    metadata_4_save = {'class_name': None,
-                       'nickname': None,
-                       'description': None,
-                       'architecture': None,
-                       'tags': None,
-                       'create_time': None,
-                       'weight_path': None,
-                       'code_path': None,
-                       'epoch': None,
-                       'train_accuracy': None,
-                       'val_accuracy': None,
-                       'test_accuracy': None,
-                       'last_eval_on_dev_set': None,
-                       'last_eval_on_test_set': None
-                       }
-
-    # Get the model's class name
-    class_name = metadata.get('class_name')
-
-    # If the model is custom(i.e. it has code definition)
-    if 'code' in request.form:
-        # Get the model definition code and save it to a temporary file
-        code = request.form.get('code')
+    cm = ContextManager()
+    with cm:
+        # Precheck the request
         try:
-            with open(code_path, 'w') as code_file:
-                code_file.write(code)
+            precheck_request_4_upload_model(request)
         except Exception as e:
-            clear_model_temp_files(saving_id)
-            return RResponse.abort(500, f"Failed to save the model definition. {e}")
+            RResponse.abort(400, f"Request validation failed. Error: {e}")
 
-        # Initialize the custom model
-        try:
-            model = init_custom_model(code_path, class_name)
-        except Exception as e:
-            clear_model_temp_files(saving_id)
-            return RResponse.abort(400, f"Failed to initialize the custom model. {e}")
-    elif 'pretrained' in metadata:   # If the model is predefined
-        pretrained = bool(int(metadata.get('pretrained')))
-        num_classes = int(metadata.get('num_classes'))
-        try:
-            model = init_predefined_model(class_name, pretrained, num_classes)
-            with open(code_path, 'w') as code_file:
-                code_file.write(f"num_classes = {num_classes}")
-        except Exception as e:
-            return RResponse.abort(400, f"Failed to initialize the predefined model. {e}")
-    else:
-        return RResponse.abort(400, "The model is neither custom nor predefined.")
+        metadata_str = request.form.get("metadata")
+        metadata = json.loads(metadata_str)
 
-    # Get the weight file and save it to a temporary location if it exists
-    if 'weight_file' in request.files:
-        weight_file = request.files.get('weight_file')
-        try:
-            weight_path = os.path.join(RServer.get_server().base_dir, 'generated', 'models', f'{saving_id}.pth')
-            weight_file.save(weight_path)
-        except Exception as e:
-            clear_model_temp_files(saving_id)
-            return RResponse.abort(500, f"Failed to save the weight file. {e}")
+        print("Requested to upload a new model")
 
-        # Load the weights from the file
-        try:
-            model.load_state_dict(torch.load(weight_path))
-        except Exception as e:
-            clear_model_temp_files(saving_id)
-            return RResponse.abort(400, f"Failed to load the weights. {e}")
-    else:   # If the weight file is not provided, save the current weights to a temporary location
-        try:
-            weight_path = os.path.join(RServer.get_server().base_dir, 'generated', 'models', f'{saving_id}.pth')
-            torch.save(model.state_dict(), weight_path)
-        except Exception as e:
-            clear_model_temp_files(saving_id)
-            return RResponse.abort(500, f"Failed to save the weight file. {e}")
+        # Get the model's class name
+        class_name = metadata.get("class_name")
 
-    # Validate the model
+        predefined = bool(int(metadata.get("predefined")))
+
+        # Save the model's code definition and initialize the model
+        if not predefined:  # If the model is custom
+            cm.init_code_path()
+
+            # Get the model definition code and save it to a temporary file
+            code = request.form.get("code")
+            save_code(code, cm.code_path)
+            # Initialize the model
+            try:
+                model = RServer.get_model_wrapper().init_custom_model(
+                    cm.code_path, class_name
+                )
+            except Exception as e:
+                RResponse.abort(400, f"Failed to initialize the custom model. {str(e)}")
+        elif predefined:  # If the model is predefined
+            pretrained = bool(int(metadata.get("pretrained")))
+            try:
+                model = RServer.get_model_wrapper().init_predefined_model(
+                    class_name, pretrained
+                )
+            except Exception as e:
+                RResponse.abort(
+                    400, f"Failed to initialize the predefined model. Error: {str(e)}"
+                )
+
+        # Get the weight file and save it to a temporary location if it exists
+        if "weight_file" in request.files:
+            cm.init_weight_path()
+            weight_file = request.files.get("weight_file")
+            save_ckpt_weight(weight_file, cm.weight_path)
+            # Load and validate the weights from the file
+            try:
+                load_ckpt_weight(model, cm.weight_path)
+            except Exception as e:
+                RResponse.abort(400, f"Failed to load the weights. Error: {str(e)}")
+
+        # Validate the model
+        try:
+            dummy_model_wrapper = DummyModelWrapper(
+                model, RServer.get_model_wrapper().device
+            )
+            val_model(dummy_model_wrapper)
+        except Exception as e:
+            RResponse.abort(400, f"The model is invalid. {e}")
+
+        # Construct the metadata for saving
+        metadata_4_save = construct_metadata_4_save(
+            metadata, cm.code_path, cm.weight_path, model
+        )
+
+        # Save the model's metadata to the database
+        try:
+            model = RServer.get_model_wrapper().create_model(metadata_4_save)
+
+            ## Set the current model to the newly uploaded model
+            ## TODO(Chonghan): Removing this logic for better separation of concern during tests.
+            ## We may want to add this back in the future.
+            # RServer.get_model_wrapper().set_current_model(metadata.get("nickname"))
+            return RResponse.ok(model.as_dict())
+        except Exception as e:
+            RResponse.abort(400, f"Failed to save the model. Error: {str(e)}")
+
+
+
+
+@model_api.route("/model/<int:model_id>", methods=["PUT"])
+def update_model(model_id: int):
+    """
+    path_parameter:
+        model_name: nickname of the model
+    request_body:
+        metadata: see upload_model API definition
+    returns:
+        model meta data
+    """
     try:
-        val_model(model)
+        metadata_str = request.form.get("metadata")
+        metadata = json.loads(metadata_str)
+        model = RServer.get_model_wrapper().update_model(model_id, metadata)
+        if not model:
+            return RResponse.abort(
+                400, f"Failed to update model.Model {model_id} not found."
+            )
+        return RResponse.ok(model.as_dict())
     except Exception as e:
-        clear_model_temp_files(saving_id)
-        return RResponse.abort(400, f"The model is invalid. {e}")
+        traceback.print_exc()
+        return RResponse.abort(500, f"Failed to update model. Error: {str(e)}")
 
-    # Update the metadata for saving
-    metadata_4_save['class_name'] = class_name
-    metadata_4_save['nickname'] = metadata.get('nickname')
-    metadata_4_save['description'] = metadata.get('description') if metadata.get('description') else None
-    metadata_4_save['tags'] = metadata.get('tags') if metadata.get('tags') else None
-    metadata_4_save['create_time'] = datetime.now()
-    metadata_4_save['code_path'] = code_path
-    metadata_4_save['weight_path'] = weight_path
-    metadata_4_save['epoch'] = 0
-    metadata_4_save['train_accuracy'] = None
-    metadata_4_save['val_accuracy'] = None
-    metadata_4_save['test_accuracy'] = None
-    metadata_4_save['last_eval_on_dev_set'] = None
-    metadata_4_save['last_eval_on_test_set'] = None
 
-    # Save the model's architecture to the metadata
-    buffer = io.StringIO()
-    with contextlib.redirect_stdout(buffer):
-        print(model)
-    metadata_4_save['architecture'] = buffer.getvalue()
-
-    # Save the model's metadata to the database
+@model_api.route("/model/duplicate/<int:model_id>", methods=["POST"])
+def duplicate_model(model_id: int):
+    """
+    return model metadata for the duplicated model
+    """
     try:
-        RServer.get_model_wrapper().create_model(metadata_4_save)
+        model = RServer.get_model_wrapper().duplicate_model(model_id)
+        if not model:
+            return RResponse.abort(
+                400, f"Failed to duplicate model. Model {model_id} not found."
+            )
+        return RResponse.ok(model.as_dict())
     except Exception as e:
-        return RResponse.abort(500, f"Failed to save the model. {e}")
-
-    # Set the current model to the newly uploaded model
-    try:
-        SetCurrModel(saving_id)
-    except Exception as e:
-        return RResponse.abort(500, f"Failed to set the current model. {e}")
-
-    return RResponse.ok('Success')
+        traceback.print_exc()
+        return RResponse.abort(500, f"Failed to duplicate model. Error: {str(e)}")
 
 
 @model_api.route("/model/list", methods=["GET"])
-def GetAllModels():
-    """ return data
-    [
-        {
-            id: string,
-            name: string,
-            details: string,
-        },
-        ...
-    ]
+def get_all_models():
     """
-    pass
+    return a list of model metadata
+    """
+    try:
+        return RResponse.ok(
+            [model.as_dict() for model in RServer.get_model_wrapper().list_models()]
+        )
+    except Exception as e:
+        traceback.print_exc()
+        return RResponse.abort(500, f"Failed to list all models. {str(e)}")
 
+
+@model_api.route("/model/predefined", methods=["GET"])
+def get_predefined_models():
+    """
+    return a list of pre-defined model names
+    """
+    return RResponse.ok(RModelWrapper.list_predefined_models())

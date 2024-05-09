@@ -3,6 +3,7 @@ from flask import Flask
 import pickle
 import os.path as osp
 import os
+from pathlib import Path
 from utils.path_utils import get_paired_path, split_path, to_unix
 from torchvision import transforms
 from flask_sqlalchemy import SQLAlchemy
@@ -17,7 +18,6 @@ import torchvision.transforms.functional as transF
 
 # The data interface
 class RDataManager:
-
     SUPP_IMG_EXT = ["jpg", "jpeg", "png"]
 
     def __init__(
@@ -26,18 +26,15 @@ class RDataManager:
         dataset_dir: str,
         db_conn: SQLAlchemy,
         app: Flask,
-        shuffle=True,
         image_size=32,
         image_padding="short_side",
         class2label_mapping=None,
     ):
-
         # TODO: Support customized splits by taking a list of splits as argument
         # splits = ['train', 'test']
         self.data_root = dataset_dir
         self.base_dir = baseDir
         self.db_conn = db_conn
-        self.shuffle = shuffle
         self.image_size = image_size
         self.image_padding = image_padding
         self.class2label = class2label_mapping
@@ -121,6 +118,7 @@ class RDataManager:
         )
         if not os.path.exists(self.validation_root):
             self.validationset: REvalImageFolder = self.testset
+            self.validation_root = self.test_root
         else:
             self.validationset: REvalImageFolder = REvalImageFolder(
                 self.validation_root,
@@ -220,6 +218,10 @@ class RDataManager:
 
     def get_db_conn(self):
         return self.db_conn
+
+    def dispose_db_engine(self):
+        with self.app.app_context():
+            self.db_conn.engine.dispose()
 
 
 class SquarePad:

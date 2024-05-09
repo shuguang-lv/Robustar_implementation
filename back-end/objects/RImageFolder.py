@@ -115,7 +115,6 @@ class RImageFolder(DatasetFolder):
         should_reindex: bool = False,
         class2label: dict[str, str] = None,
     ):
-
         super(RImageFolder, self).__init__(
             root,
             loader,
@@ -195,7 +194,6 @@ class RTrainImageFolder(RImageFolder):
         should_reindex: bool = False,
         class2label: dict[str, str] = None,
     ):
-
         super(RTrainImageFolder, self).__init__(
             root,
             split,
@@ -254,7 +252,6 @@ class REvalImageFolder(RImageFolder):
         should_reindex: bool = False,
         class2label: dict[str, str] = None,
     ):
-
         super(REvalImageFolder, self).__init__(
             root,
             split,
@@ -374,7 +371,6 @@ class RAnnotationFolder(RImageFolder):
         should_reindex: bool = False,
         class2label: dict[str, str] = None,
     ):
-
         self.root = root
         self.train_root = train_root
 
@@ -419,13 +415,9 @@ class RAnnotationFolder(RImageFolder):
     def remove_image(self, path):
         path = to_unix(path)
         # 1. delete the paired image in database...
-        image_to_delete = self.db_model.query.get(path)
-        if image_to_delete:
-            self.db_conn.delete(image_to_delete)
-            print(f"Image deleted. Path: {image_to_delete}")
-        else:
-            print(f"Image failed to delete. Path: {image_to_delete}")
-            return
+        self.db_conn.session.query(self.db_model).filter(
+            self.db_model.path == path
+        ).delete()
 
         # 2. create an empty image placeholder
         os.remove(path)

@@ -40,6 +40,7 @@ def start_flask_app():
 # Get server listener objects
 app, socket = start_flask_app()
 
+
 # Init socket connection
 @socket.on("connect")
 def test_connect():
@@ -56,7 +57,6 @@ def precheck():
     validationset = data_manager.validationset
 
     def check_num_classes_consistency():
-
         classes_num = configs["num_classes"]
         error_template = "Number of classes specified in configs.json({}) doesn't match that in dataset {}({})"
         errors = []
@@ -99,7 +99,7 @@ def precheck():
     check_image_size_consistency()
 
 
-def new_server_object(base_dir):
+def new_server_object(base_dir, app, socket):
     base_dir = to_unix(base_dir)
     dataset_dir = to_unix(osp.join(base_dir, "dataset"))
     ckpt_dir = to_unix(osp.join(base_dir, "checkpoints"))
@@ -121,7 +121,8 @@ def new_server_object(base_dir):
     else:
         print("Class to label file not found!")
 
-    network_type = configs["model_arch"]
+    # TODO: Remove this in the future
+    network_type = "resnet-18-32x32"
     expected_input_shape = MODEL_INPUT_SHAPE.get(network_type)
     image_size = (
         configs["image_size"] if expected_input_shape is None else expected_input_shape
@@ -141,19 +142,16 @@ def new_server_object(base_dir):
 
     """ SETUP DATA MANAGER """
     # Setup database
-    db_conn_str = f"sqlite:///{to_absolute(os.getcwd(), db_path)}"
-    app.config["SQLALCHEMY_DATABASE_URI"] = db_conn_str
     from database.db_init import db, init_db
 
-    db.init_app(app)
-    init_db(app)
+    init_db(app, db_path)
+
     # Setup data manager
     data_manager = RDataManager(
         base_dir,
         dataset_dir,
         db,
         app,
-        shuffle=configs["shuffle"],
         image_size=image_size,
         image_padding=configs["image_padding"],
         class2label_mapping=class2label_mapping,
@@ -161,6 +159,9 @@ def new_server_object(base_dir):
     RServer.set_data_manager(data_manager)
 
     """ SETUP MODEL """
+    # TODO：Remove this in the future
+    configs["weight_to_load"] = "dummy_weight.pth"
+    configs["pre_trained"] = False
     model = RModelWrapper(
         db_conn=db,
         network_type=network_type,
@@ -168,6 +169,7 @@ def new_server_object(base_dir):
         device=configs["device"],
         pretrained=configs["pre_trained"],
         num_classes=configs["num_classes"],
+        app=app,
     )
     RServer.set_model(model)
 
@@ -205,7 +207,7 @@ def create_app():
     basedir = to_absolute(os.getcwd(), to_unix(args.basedir))
     print("Current working directory is {}".format(os.getcwd()))
     print("Absolute basedir is {}".format(basedir))
-    new_server_object(basedir)
+    new_server_object(basedir, app, socket)
 
     print("Server started")
     return RServer.get_server().get_flask_app()
