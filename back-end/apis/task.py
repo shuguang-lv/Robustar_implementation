@@ -10,9 +10,10 @@ def stop_task(tid):
     tid = int(tid)
     print(tid)
     try:
-        RTask.exit_task(tid)
+        if not RTask.exit_task(tid):
+            RResponse.abort(400, f"Task({tid}) not in list")
     except ValueError as e:
-        RResponse.abort(400, f"Task({tid}) not in list")
+        RResponse.abort(500, f"Error deleting task id ({tid}). Id: {e}")
     return RResponse.ok(f"Task({tid}) has been stopped")
 
 @task_api.route("/task", methods=["GET"])

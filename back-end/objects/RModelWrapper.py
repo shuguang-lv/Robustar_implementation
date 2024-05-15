@@ -3,6 +3,7 @@ import torchvision
 import os
 from threading import Lock
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import joinedload
 from database.model import Models, Tags, db
 from datetime import datetime
 import importlib
@@ -138,31 +139,35 @@ class RModelWrapper:
 
         Return True if the model is available, False otherwise.
         """
-        self._lock.acquire()
+        try:
+            self._lock.acquire()
 
-        if self._model_available:
-            self._model_available = False
+            if self._model_available:
+                self._model_available = False
+                return True
+        finally:
             self._lock.release()
-            return True
-
-        self._lock.release()
         return False
 
     def release_model(self):
         """
         Release the model so that other threads can use it
         """
-        self._lock.acquire()
-        self._model_available = True
-        self._lock.release()
+        try:
+            self._lock.acquire()
+            self._model_available = True
+        finally:
+            self._lock.release()
 
     def is_model_available(self):
         """
         Check if the model is available without changing its state.
         """
-        self._lock.acquire()
         try:
+            self._lock.acquire()
             return self._model_available
+        except Exception:
+            return False
         finally:
             self._lock.release()
 
@@ -174,7 +179,7 @@ class RModelWrapper:
         # TODO: Need to validate fields, dump model definition to a file,
         # etc. Either do these here or somewhere else
 
-        tags = fields.pop("tags", [])
+        tags = fields.pop("tags", []) or []
 
         tag_objs = []
         if tags:
@@ -278,7 +283,7 @@ class RModelWrapper:
 
     @staticmethod
     def get_model_by_id(id) -> Models:
-        return Models.query.filter_by(id=id).first()
+        return Models.query.options(joinedload(Models.tags)).filter_by(id=id).first()
 
     @staticmethod
     def convert_metadata_2_dict(metadata):

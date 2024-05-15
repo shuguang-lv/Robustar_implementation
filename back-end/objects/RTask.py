@@ -60,8 +60,7 @@ class RTask:
         for task in buffer:
             task.exit()
 
-    @staticmethod
-    # @with_lock
+    @with_lock
     def generate_tid():
         RTask.tid += 1
         return RTask.tid
@@ -96,8 +95,10 @@ class RTask:
         task = RTask.find_task(tid)
         if not task:
             print("Task not found")
+            return False
         RTask.tasks.remove(task)
         RTask.send_digest()
+        return True
 
     @staticmethod
     @with_lock
@@ -112,7 +113,6 @@ class RTask:
         return res
 
     @staticmethod
-    # @with_lock
     def get_tasks_digest():
         digest = []
         for task in RTask.tasks:

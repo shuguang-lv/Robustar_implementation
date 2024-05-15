@@ -9,7 +9,7 @@
         <div>
           <span>
             <span class="font-weight-medium">Tag: </span>
-            {{ currentModel.tag.join(', ') }}
+            {{ currentModel?.tag?.join(', ') || '' }}
           </span>
           <span class="mx-8">
             <span class="font-weight-medium">Epoch: </span>

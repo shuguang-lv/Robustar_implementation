@@ -71,4 +71,5 @@ dist
 # cypress
 cypress/videos
 cypress/screenshots
+cypress/downloads
 cypress.env.json
