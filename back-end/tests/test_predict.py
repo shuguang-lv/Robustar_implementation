@@ -6,32 +6,6 @@ from .test_model import dummy_api_upload_dummy_model, dummy_api_set_current_mode
 
 class TestPredict:
     class TestPredict:
-        def test_predict_fail_invalid_split(self, client, reset_db):
-            response = client.get("/predict/non-exist?" + PARAM_NAME_IMAGE_PATH + "=/0")
-            assert response.status_code == 400
-            rv = response.get_json()
-            assert rv["error_code"] == -1
-            assert rv["detail"] == "Split not supported"
-
-        def test_predict_fail_invalid_path(self, client, reset_db):
-            response = client.get(
-                "/predict/train?"
-                + PARAM_NAME_IMAGE_PATH
-                + "="
-                + RServer.get_server().base_dir
-                + "/dataset/train/bird/10000.JPEG"
-            )
-            assert response.status_code == 400
-            rv = response.get_json()
-            assert rv["error_code"] == -1
-            assert (
-                rv["detail"]
-                == "Invalid image path "
-                + RServer.get_server().base_dir
-                + "/dataset/train/bird/10000.JPEG"
-            )
-            # TODO: [test] other splits
-
         def test_predict_success(self, client, reset_db):
             resp = dummy_api_upload_dummy_model(client)
             assert (
@@ -71,7 +45,34 @@ class TestPredict:
                 f"{RServer.get_server().base_dir}/visualize_images/{to_snake_path(RServer.get_server().base_dir)}_dataset_train_bird_1_JPEG_{idx}.png"
                 for idx in range(4)
             ]
+
+        def test_predict_fail_invalid_split(self, client, reset_db):
+            response = client.get("/predict/non-exist?" + PARAM_NAME_IMAGE_PATH + "=/0")
+            assert response.status_code == 400
+            rv = response.get_json()
+            assert rv["error_code"] == -1
+            assert rv["detail"] == "Split not supported"
+
+        def test_predict_fail_invalid_path(self, client, reset_db):
+            response = client.get(
+                "/predict/train?"
+                + PARAM_NAME_IMAGE_PATH
+                + "="
+                + RServer.get_server().base_dir
+                + "/dataset/train/bird/10000.JPEG"
+            )
+            assert response.status_code == 400
+            rv = response.get_json()
+            assert rv["error_code"] == -1
+            assert (
+                rv["detail"]
+                == "Invalid image path "
+                + RServer.get_server().base_dir
+                + "/dataset/train/bird/10000.JPEG"
+            )
             # TODO: [test] other splits
+
+ 
 
     class TestGetInfluence:
         def test_get_influence_fail_invalid_split(self, client, reset_db):

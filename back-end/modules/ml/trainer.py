@@ -26,6 +26,7 @@ class Trainer:
         use_paired_train=False,
         use_tensorboard=True,
         paired_reg=1e-4,
+        new_model_name='',
     ):
         self.val_sample_buffer = None
         self.update_info = None
@@ -52,6 +53,7 @@ class Trainer:
         # Initialize loaders
         self.train_loader = None
         self.val_loader = None
+        self.new_model_name = new_model_name
         self.initialize_loader(train_set, val_set, batch_size, shuffle, num_workers)
 
     def initialize_loader(self, train_set, test_set, batch_size, shuffle, num_workers):
@@ -96,7 +98,7 @@ class Trainer:
     def create_metadata_4_save(self, epoch, weight_path, train_acc, val_acc):
         metadata_4_save = {
             "class_name": self.orig_metadata["class_name"],
-            "nickname": self.orig_metadata["nickname"],
+            "nickname": self.orig_metadata["nickname"] if not self.new_model_name else self.new_model_name,
             "predefined": self.orig_metadata["predefined"],
             "pretrained": self.orig_metadata["pretrained"],
             "description": self.orig_metadata["description"],

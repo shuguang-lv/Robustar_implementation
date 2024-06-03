@@ -147,6 +147,8 @@ describe('Image List', () => {
     cy.getBySel('auto-annotate-end-index').should('have.value', 14);
   });
   it('Clicks PREDICT button and calls predict API once', () => {
+    cy.uploadModel();    
+    cy.setCurrentModel();   
     cy.intercept('GET', '/api/predict/**').as('predict');
     cy.visit('image-list/train');
     cy.get('[data-test=image-list-img-0]', { timeout: 120 * 1000 }).trigger('mouseenter');

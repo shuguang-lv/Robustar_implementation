@@ -2,6 +2,8 @@ const { _ } = Cypress;
 describe('Visualizer', () => {
   before(() => {
     cy.removeSessionStorage('visualizer_panels');
+    cy.uploadModel();
+    cy.setCurrentModel();
   });
 
   beforeEach(() => {

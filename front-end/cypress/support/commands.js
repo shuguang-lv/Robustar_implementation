@@ -75,3 +75,22 @@ Cypress.Commands.add('existsThenClick', (selector) => {
     }
   });
 });
+
+Cypress.Commands.add('uploadModel', () => {
+  cy.visit('model');
+  cy.contains('.v-btn', 'Upload New Model').click();
+  cy.get('[data-test=model-upload-nickname]').type("SimpleCNN");
+  cy.get('[data-test=model-upload-classname]').type("SimpleCNN");
+  cy.get('[data-test=model-upload-codefile]').selectFile('cypress/testdata/SimpleCNN.py', { force: true });
+  cy.get('[data-test=model-upload-submit-button]').click();
+  cy.get('[data-test=model-upload-submit-button]').should('not.visible');
+})
+
+Cypress.Commands.add('setCurrentModel', () => {
+  // This sets the first model as current.
+  // Make sure model is cleaned up properly and uploadModel is called before using this
+  cy.visit('model');
+  cy.get('tr:nth-child(1)').find('td').eq(10).within(() => {
+    cy.get('[data-test=train-model-set-model-as-current]').click({ force: true });
+  })
+})

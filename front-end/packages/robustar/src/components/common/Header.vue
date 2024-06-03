@@ -8,7 +8,11 @@
 
     <v-spacer></v-spacer>
 
-    <div class="mr-8 primary--text">Current Model: {{ currentModel?.nickname || '' }}</div>
+    <div class="mr-8 primary--text">
+      <span v-if="currentModel?.nickname">Current Model: {{ currentModel?.nickname }} <v-icon color="green">mdi-check</v-icon> </span>
+        
+      <span v-else> No current model selected <v-icon color="red">mdi-crosshairs-question</v-icon> </span>
+    </div>
 
     <div v-click-outside="onClickOutside">
       <v-btn icon color="primary" @click="toggleTaskspanel" data-test="header-toggle-tasks-panel">

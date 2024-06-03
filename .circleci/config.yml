@@ -16,6 +16,8 @@ jobs:
             echo "npm version: $(npm -v)"
             ls -al
             echo '^^^^^^^^^^^^^ Files cloned from repo'
+            ls ./front-end/cypress/testdata
+            echo '^^^^^^^^^^^^^ Files in cypress folder'
             echo 'Current Branch: $(git branch --show-current)'
             echo 'Commit: $(git rev-parse HEAD)'
       - run:

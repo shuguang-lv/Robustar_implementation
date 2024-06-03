@@ -30,9 +30,9 @@ def get_image_prediction(
     If `argmax` is set to true, return the index of the most probable class.
 
     args:
-        model:      The model to make the predictions
-        imgpath:    Path to the image to be predicted
-        imgsize:    Resize (scale) the input image to imgsize*imgsize.
+        model_wrapper:      The model wrapper. Throw an error if current model is empty.
+        imgpath:            Path to the image to be predicted
+        imgsize:            Resize (scale) the input image to imgsize*imgsize.
     """
     data_manager = RServer.get_data_manager()
     try:

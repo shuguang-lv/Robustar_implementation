@@ -85,6 +85,7 @@ def setup_training(configs):
         use_paired_train=configs["use_paired_train"],
         paired_reg=configs["paired_train_reg_coeff"],
         use_tensorboard=configs["use_tensorboard"],
+        new_model_name=configs["model_name"],
     )
 
     return train_set, val_set, model, trainer

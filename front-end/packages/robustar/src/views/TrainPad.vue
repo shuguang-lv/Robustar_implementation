@@ -16,7 +16,7 @@
         <!-- Model Name -->
         <v-text-field
           v-model="configs.model_name"
-          label="Model name"
+          label="New Model Name:"
           outlined
           clearable
         ></v-text-field>
@@ -170,6 +170,7 @@ export default {
       ],
       // Training configs
       configs: {
+        model_name: '',
         model_id: 1,
         use_paired_train: true,
         mixture: 'random_pure',
@@ -186,22 +187,9 @@ export default {
       },
     };
   },
-  async created() {
-    try {
-      const res = await APIGetCurrentModel();
-      const model = res?.data?.data;
-      if (model) {
-        this.configs.model_name = model.nickname;
-        this.configs.epoch = model.epoch;
-        this.configs.pretrain = model.pretrained;
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  },
   methods: {
     async startTraining() {
-      this.$root.startProcessing('The training is starting. Please wait...');
+      this.$root.startProcessing('Starting training process...');
       try {
         // TODO(Chonghan): Check whether current model is set or not, both here and from the back end
         const res = await APIStartTrain({
@@ -209,7 +197,7 @@ export default {
           info: 'placeholder',
         });
         this.$root.finishProcessing();
-        this.$root.alert('success', 'Training started successfully');
+        this.$root.alert('success', 'Training process started');
         window.open(configs.tensorboardUrl);
       } catch (error) {
         this.$root.finishProcessing();

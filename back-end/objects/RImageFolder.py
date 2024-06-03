@@ -335,17 +335,18 @@ class REvalImageFolder(RImageFolder):
         correct_results = (
             self.db_conn.session.query(table_to_query)
             .join(EvalResults, EvalResults.img_path == table_to_query.path)
-            .filter(EvalResults.result == 0)
+            .filter(EvalResults.result == self.CLS_CORRECT)
             .all()
         )
         self.buffer_correct = [(res.path, res.label) for res in correct_results]
 
         incorrect_results = (
-            self.db_conn.session.query(table_to_query.path)
+            self.db_conn.session.query(table_to_query)
             .join(EvalResults, EvalResults.img_path == table_to_query.path)
-            .filter(EvalResults.result == 1)
+            .filter(EvalResults.result == self.CLS_INCORRECT)
             .all()
         )
+        # print(incorrect_results)
         self.buffer_incorrect = [(res.path, res.label) for res in incorrect_results]
 
 

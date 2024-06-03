@@ -3,6 +3,7 @@ import torchvision
 import os
 from threading import Lock
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import desc
 from sqlalchemy.orm import joinedload
 from database.model import Models, Tags, db
 from datetime import datetime
@@ -51,8 +52,8 @@ class RModelWrapper:
         self.num_classes = num_classes
         self.modelwork_type = network_type
 
-        # TODO: Should initialize to None. Remove in the future.
-        self.model = self.init_predefined_model(network_type, pretrained)
+        # No pre-defined model at the beginning
+        self.model = None
         self._lock = Lock()
         self._model_available = True
 
@@ -198,7 +199,7 @@ class RModelWrapper:
         return model
 
     def list_models(self) -> list[Models]:
-        return Models.query.all()
+        return Models.query.order_by(desc(Models.create_time)).all()
 
     def delete_model_by_id(self, id) -> Models:
         if self.is_current_model(id):

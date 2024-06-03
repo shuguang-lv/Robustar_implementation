@@ -1,4 +1,9 @@
 describe('The Train Page', () => {
+  before(() => {
+    cy.uploadModel();    
+    cy.setCurrentModel();   
+  })
+
   beforeEach(() => {
     cy.visit('train-pad');
   });

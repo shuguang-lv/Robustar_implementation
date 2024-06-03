@@ -6,7 +6,6 @@ from objects.RDataManager import RDataManager
 from objects.RModelWrapper import RModelWrapper, MODEL_INPUT_SHAPE
 from objects.RAutoAnnotator import RAutoAnnotator
 from utils.path_utils import to_unix, to_absolute
-from utils.predict import get_image_prediction
 from flask import Flask
 import argparse
 from flask_socketio import emit, SocketIO
@@ -51,7 +50,6 @@ def test_connect():
 def precheck():
     configs = RServer.get_server_configs()
     data_manager = RServer.get_data_manager()
-    model_wrapper = RServer.get_model_wrapper()
     trainset = data_manager.trainset
     testset = data_manager.testset
     validationset = data_manager.validationset
@@ -78,25 +76,7 @@ def precheck():
             )
         assert len(errors) == 0, "\n".join(errors)
 
-    def check_image_size_consistency():
-        try:
-            get_image_prediction(
-                model_wrapper, trainset.get_image_list()[0], data_manager.image_size
-            )
-        except Exception as e:
-            mapping = [f"{model}: {size}" for model, size in MODEL_INPUT_SHAPE.items()]
-            print(
-                f"""
-            Image size consistency check failed. This is likely to be caused by a mismatch between image_size and model architecture configurations. Different models require input images of different sizes.
-            The mapping is {mapping}
-            \n
-            raw error message: {(e)}
-            """
-            )
-            raise
-
     check_num_classes_consistency()
-    check_image_size_consistency()
 
 
 def new_server_object(base_dir, app, socket):

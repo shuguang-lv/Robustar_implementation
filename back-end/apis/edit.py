@@ -125,11 +125,12 @@ def api_propose_edit(split):
     path = request.args.get(PARAM_NAME_IMAGE_PATH)
 
     if split not in ["annotated", "train"]:
-        RResponse.abort(
-            400,
+        return RResponse.ok(
+            None,
             "Split {} not supported! Currently we only support editing the `train` or `annotated` splits!".format(
                 split
             ),
+            -1,
         )
 
     path = to_unix(path)
@@ -143,7 +144,9 @@ def api_propose_edit(split):
 
 @edit_api.route("/auto-annotate/<split>", methods=["POST"])
 def api_auto_annotate(split):
-    """ """
+    """ 
+    Batch auto-annotate training set from start_idx to end_idx 
+    """
 
     if split != "train":
         RResponse.abort(

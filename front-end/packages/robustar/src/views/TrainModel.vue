@@ -170,6 +170,12 @@
           " data-test="train-model-delete-model">
             mdi-delete
           </v-icon>
+          <v-icon small @click="
+            setCurrentModelById(item.id);
+          " data-test="train-model-set-model-as-current">
+            mdi-check
+          </v-icon>
+
         </template>
 
       </v-data-table>
@@ -284,13 +290,18 @@ export default {
         this.isLoading = false;
       }
     },
-    async setCurrentModel() {
+    async setCurrentModelById(modelId) {
       try {
-        const response = await APISetCurrentModel(this.editingModel.id);
+        const response = await APISetCurrentModel(modelId);
         this.currentModel = { ...this.editingModel };
+        this.$root.$emit('sync-current-model');
+        this.getCurrentModel()
       } catch (error) {
         console.error('Error setting current model:', error);
       }
+    },
+    async setCurrentModel() {
+      this.setCurrentModelById(this.editingModel.id)
     },
     async deleteModel() {
       this.isSubmitting = true;
@@ -298,6 +309,7 @@ export default {
         await APIDeleteModel(this.deletingModelId);
         this.getCurrentModel();
         this.getModelList();
+        this.$root.$emit('sync-current-model');
         this.dialogDelete = false;
       } catch (error) {
         console.error('Error deleting model:', error);

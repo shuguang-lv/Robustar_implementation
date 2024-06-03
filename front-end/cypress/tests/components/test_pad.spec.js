@@ -1,4 +1,9 @@
 describe('The Test Page', () => {
+  before(() => {
+    cy.uploadModel();    
+    cy.setCurrentModel();   
+  })
+
   beforeEach(() => {
     cy.visit('test');
   });

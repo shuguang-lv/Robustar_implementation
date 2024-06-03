@@ -85,6 +85,8 @@ def predict(split):
     server = RServer.get_server()
     dataManager = server.data_manager
     model_wrapper = RServer.get_model_wrapper()
+    if not model_wrapper.model:
+        RResponse.abort(400, "Failed to enable image visualization because no current model is set.")
 
     # get attributes
     if split in ("train", "annotated"):
@@ -123,10 +125,12 @@ def predict(split):
             dataManager.image_size,
             server.configs["device"],
         )
-
+    except FileNotFoundError as e:
+        traceback.print_exc()
+        RResponse.abort(400, f"Invalid image path {image_path}")
     except Exception as e:
         traceback.print_exc()
-        RResponse.abort(400, "Invalid image path {}".format(image_path))
+        RResponse.abort(400, f"Server error: ({str(e)})")
     finally:
         model_wrapper.release_model()
 

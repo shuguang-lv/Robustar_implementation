@@ -40,13 +40,13 @@ export default {
   },
   methods: {
     async startTesting(split) {
-      this.$root.startProcessing('The test is going on. Please wait...');
+      this.$root.startProcessing('Starting test process ...');
       try {
         const res = await APIStartTest({
           split,
         });
         this.$root.finishProcessing();
-        this.$root.alert('success', 'Testing succeeded');
+        this.$root.alert('success', 'Testing process started');
       } catch (error) {
         this.$root.finishProcessing();
         this.$root.alert('error', error.response?.data?.detail || 'Testing failed');
