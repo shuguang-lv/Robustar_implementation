@@ -3,15 +3,43 @@ import os
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from objects.RServer import RServer
-from objects.RModelWrapper import RModelWrapper
 import threading
 import multiprocessing
 import logging
 
 logger = logging.getLogger(__name__)
 
+class TrainingConfig:
+    def __init__(self, configs):
+        self.use_paired_train = configs['use_paired_train']
+        self.mixture = configs['mixture']
+        self.auto_save_model = configs['auto_save_model']
+        self.batch_size = int(configs['batch_size'])
+        self.shuffle = configs['shuffle']
+        self.learn_rate = float(configs['learn_rate'])
+        self.paired_train_reg_coeff = float(configs['paired_train_reg_coeff'])
+        self.epoch = int(configs['epoch'])
+        self.num_workers = int(configs['num_workers'])
+        self.user_edit_buffering = configs['user_edit_buffering']
+        self.save_every = int(configs['save_every'])
+        self.use_tensorboard = int(configs['use_tensorboard'])
+        self.model_name = configs['model_name']
+
+    @staticmethod
+    def validate(configs):
+        for field in ('use_paired_train', 'user_edit_buffering', 'shuffle',
+                      'auto_save_model', 'use_tensorboard'):
+            if configs[field] not in (True, False):
+                raise ValueError(f'{field} has to be either True or False. Got {configs[field]}') 
+
+    @staticmethod
+    def from_dict(configs):
+        __class__.validate(configs)
+        return TrainingConfig(configs)
+
+
 class TrainThread(threading.Thread):
-    def __init__(self, trainer, configs):
+    def __init__(self, trainer, configs: TrainingConfig):
         super(TrainThread, self).__init__()
         self.trainer = trainer
         self.configs = configs
@@ -21,8 +49,8 @@ class TrainThread(threading.Thread):
             with RServer.get_server().get_flask_app().app_context():
                 self.trainer.start_train(
                     call_back=lambda status_dict: self.update_info(status_dict),
-                    epochs=self.configs["epoch"],
-                    auto_save=self.configs["auto_save_model"],
+                    epochs=self.configs.epoch,
+                    auto_save=self.configs.auto_save_model,
                 )
         except Exception as e:
             logger.exception(f"Error in training thread. {str(e)}") 
@@ -35,17 +63,16 @@ class TrainThread(threading.Thread):
         after each iteration, put it here.
         """
 
-
-def setup_training(configs):
+def setup_training(configs: TrainingConfig):
     # Configs from training pad
     data_manager = RServer.get_data_manager()
 
-    use_paired_train = configs["use_paired_train"]
-    paired_train_mixture = configs["mixture"]
+    use_paired_train = configs.use_paired_train
+    paired_train_mixture = configs.mixture
     image_size = data_manager.image_size
     train_set = data_manager.train_root
     val_set = data_manager.validation_root
-    user_edit_buffering = configs["user_edit_buffering"]
+    user_edit_buffering = configs.user_edit_buffering
     device = RServer.get_model_wrapper().device
     data_manager = RServer.get_data_manager()
     transforms = data_manager.transforms
@@ -74,18 +101,18 @@ def setup_training(configs):
         model=model,
         train_set=train_set,
         val_set=val_set,
-        batch_size=configs["batch_size"],
-        shuffle=configs["shuffle"],
-        num_workers=configs["num_workers"],
+        batch_size=configs.batch_size,
+        shuffle=configs.shuffle,
+        num_workers=configs.num_workers,
         device=device,
-        learn_rate=configs["learn_rate"],
-        auto_save=configs["auto_save_model"],
-        save_every=configs["save_every"],
+        learn_rate=configs.learn_rate,
+        auto_save=configs.auto_save_model,
+        save_every=configs.save_every,
         save_dir=save_dir,
-        use_paired_train=configs["use_paired_train"],
-        paired_reg=configs["paired_train_reg_coeff"],
-        use_tensorboard=configs["use_tensorboard"],
-        new_model_name=configs["model_name"],
+        use_paired_train=configs.use_paired_train,
+        paired_reg=configs.paired_train_reg_coeff,
+        use_tensorboard=configs.use_tensorboard,
+        new_model_name=configs.model_name
     )
 
     return train_set, val_set, model, trainer
@@ -120,7 +147,7 @@ def attach_tensorboard_to_trainer(trainer):
 
 
 
-def start_train(configs):
+def start_train(configs: TrainingConfig):
     """
     Starts training on a new thread which calls back influence calculating.
     Returns the new thread.
@@ -128,17 +155,11 @@ def start_train(configs):
           This is the most elegant way that I can think of to signal a stop from the front end.
     """
     # Switch to the model to be trained
-    model_wrapper = RServer.get_model_wrapper()
-    model_id = configs.get("model_id")
-    if not model_id:
-        raise ValueError(f"Model with model id '{model_id}' not found.")
-    model_wrapper.set_current_model(model_id)
-
     try:
         train_set, test_set, model, trainer = setup_training(configs)
 
         # Attach a tensorboard process to the trainer
-        if configs.get("use_tensorboard"):
+        if configs.use_tensorboard:
             attach_tensorboard_to_trainer(trainer)
 
         # Start training on a new thread

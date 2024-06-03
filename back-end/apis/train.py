@@ -1,10 +1,3 @@
-"""
-Author: Chonghan Chen (paulcccccch@gmail.com)
------
-Last Modified: Friday, 10th March 2023 5:03:19 pm
-Modified By: Chonghan Chen (paulcccccch@gmail.com)
------
-"""
 import traceback
 from flask import request
 from utils.train_utils import *
@@ -69,7 +62,6 @@ def start_training():
             configs:
               type: object
               example: {
-                'model_id': 1,
                 'use_paired_train': True,
                 'mixture': 'random_pure',
                 'auto_save_model': True,
@@ -105,9 +97,13 @@ def start_training():
     print(configs)
 
     # Return error message if config is invalid
-    check_result = check_configs(configs)
-    if check_result != 0:
-        RResponse.abort(400, f"Invalid Configuration!: {check_result}")
+    try:
+        configs = TrainingConfig.from_dict(configs)
+    except Exception as e: 
+        RResponse.abort(400, f"Invalid Configuration!: {str(e)}")
+
+    if not RServer.get_model_wrapper().model:
+        RResponse.abort(400, "Current model not set!")
 
     # Try to start training thread
     print("DEBUG: Training request received! Setting up training...")
@@ -116,7 +112,8 @@ def start_training():
     try:
         start_train(configs)
     except ValueError as e:
-        RResponse.abort(400, f"Model not found. {str(e)}")
+        traceback.print_exc()
+        RResponse.abort(400, f"Invalid parameters. {str(e)}")
     except Exception as e:
         traceback.print_exc()
         RResponse.abort(500, f"Failed to start training thread. {str(e)}")

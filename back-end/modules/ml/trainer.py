@@ -107,7 +107,7 @@ class Trainer:
             "create_time": datetime.now(),
             "code_path": self.orig_metadata["code_path"],
             "weight_path": weight_path,
-            "epoch": self.orig_metadata["epoch"] + epoch + 1,
+            "epoch": (self.orig_metadata["epoch"] or 0) + epoch + 1,
             "train_accuracy": train_acc,
             "val_accuracy": val_acc,
             "test_accuracy": None,
