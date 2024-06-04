@@ -111,6 +111,7 @@ def predict(split):
         )
 
     try:
+        model_wrapper.model.eval()
         output = get_image_prediction(
             model_wrapper, image_path, dataManager.image_size, argmax=False
         )
