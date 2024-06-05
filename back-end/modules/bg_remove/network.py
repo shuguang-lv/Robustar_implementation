@@ -69,7 +69,7 @@ class U2NET:
         except FileNotFoundError:
             raise FileNotFoundError("No pre-trained model found!")
         net.eval()
-        self.__net__ = net  # Define model
+        self.__net__ = net.to(device)  # Define model
         print("U2NET model loaded")
 
     def process_image(self, data, preprocessing=None, postprocessing=None):
