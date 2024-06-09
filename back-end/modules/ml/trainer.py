@@ -73,7 +73,7 @@ class Trainer:
 
     def save_weights(self):
         rand_id = str(uuid.uuid4())
-        weight_path = os.path.join(self.save_dir, f"{rand_id}.py")
+        weight_path = os.path.join(self.save_dir, f"{rand_id}.pth")
         torch.save(self.model.state_dict(), weight_path)
         return weight_path
 
