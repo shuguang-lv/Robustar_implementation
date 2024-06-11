@@ -83,10 +83,25 @@ class TestThread(threading.Thread):
             # exit task if normal end of the test iteration
             # task.exit()
             pass
-
         self.dataset.post_records(correct_buffer, incorrect_buffer)
+        calc_acc(correct_buffer, incorrect_buffer)
         print("Testing complete")
 
+def calc_acc(correct_buffer, incorrect_buffer):
+    counts = dict() # {label: [correct, total]}
+    for _, label in correct_buffer:
+        if label not in counts:
+            counts[label] = [0, 0]
+        counts[label][0] += 1 
+        counts[label][1] += 1
+    for _, label in incorrect_buffer:
+        if label not in counts:
+            counts[label] = [0, 0]
+        counts[label][1] += 1
+    
+    for label, (correct, total) in counts.items():
+        print(f"Label: {label}, correct: {correct}, total: {total}, accuracy: {correct / total}")
+    
 
 def start_test(split):
     model_wrapper = RServer.get_model_wrapper()

@@ -41,7 +41,7 @@ AVAILABLE_MODELS = list(MODEL_INPUT_SHAPE.keys())
 # TODO(Chonghan): Change this class to RModelManager later.
 class RModelWrapper:
     def __init__(
-        self, db_conn, network_type, net_path, device, pretrained, num_classes, app
+        self, db_conn, net_path, device, pretrained, num_classes, app
     ):
         # self.device = torch.device(device)
         self.db_conn: SQLAlchemy = db_conn
@@ -50,7 +50,6 @@ class RModelWrapper:
         self.model_meta_data = None
         self.model_id = None
         self.num_classes = num_classes
-        self.modelwork_type = network_type
 
         # No pre-defined model at the beginning
         self.model = None
@@ -72,7 +71,7 @@ class RModelWrapper:
         import contextlib
 
         metadata_4_save = {
-            "class_name": self.modelwork_type,
+            "class_name": "resnet-18-32x32",
             "nickname": "simple-classifier",
             "predefined": True,
             "pretrained": False,

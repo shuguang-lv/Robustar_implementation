@@ -121,7 +121,7 @@ class RImageFolder(DatasetFolder):
             IMG_EXTENSIONS if is_valid_file is None else None,
             transform=transform,
             target_transform=target_transform,
-            is_valid_file=is_valid_file,
+            is_valid_file=is_valid_file
         )
 
         # Change all paths to unix
@@ -132,7 +132,6 @@ class RImageFolder(DatasetFolder):
         # If class2label mapping is provided, change all labels
         if class2label is not None:
             self.readify_classes()
-
         self.root = root
         self.split = split
         self.db_conn = db_conn

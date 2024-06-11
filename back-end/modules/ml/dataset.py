@@ -10,6 +10,8 @@ from PIL import Image
 # https://github.com/explosion/spaCy/issues/7664
 import os
 
+from torchvision.datasets.folder import default_loader
+
 os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
 
 
@@ -22,7 +24,6 @@ class ImageFolderNoTransform(ImageFolder):
     This is necessary because transforms have to be applied after the creation of
     augmented data.
     """
-
     def __getitem__(self, index):
         """
         Args:

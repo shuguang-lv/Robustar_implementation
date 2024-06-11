@@ -101,12 +101,7 @@ def new_server_object(base_dir, app, socket):
     else:
         print("Class to label file not found!")
 
-    # TODO: Remove this in the future
-    network_type = "resnet-18-32x32"
-    expected_input_shape = MODEL_INPUT_SHAPE.get(network_type)
-    image_size = (
-        configs["image_size"] if expected_input_shape is None else expected_input_shape
-    )
+    image_size = configs["image_size"]
 
     print("Server initializing...")
 
@@ -144,7 +139,6 @@ def new_server_object(base_dir, app, socket):
     configs["pre_trained"] = False
     model = RModelWrapper(
         db_conn=db,
-        network_type=network_type,
         net_path=to_unix(os.path.join(ckpt_dir, configs["weight_to_load"])),
         device=configs["device"],
         pretrained=configs["pre_trained"],
